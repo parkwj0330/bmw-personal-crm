@@ -1,7 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
+import {
+  FormEvent,
+  ReactNode,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
@@ -49,12 +55,19 @@ export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [form, setForm] = useState<CustomerForm>(initialForm);
 
+  const [editingCustomerId, setEditingCustomerId] = useState<string | null>(
+    null
+  );
+
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("전체");
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [deletingCustomerId, setDeletingCustomerId] = useState<
+    string | null
+  >(null);
 
   useEffect(() => {
     void checkLoginAndLoadCustomers();
@@ -95,16 +108,36 @@ export default function CustomersPage() {
   }
 
   function openRegistrationModal() {
+    setEditingCustomerId(null);
     setForm(initialForm);
     setIsModalOpen(true);
   }
 
-  function closeRegistrationModal() {
+  function openEditModal(customer: Customer) {
+    setEditingCustomerId(customer.id);
+
+    setForm({
+      name: customer.name,
+      phone: customer.phone,
+      interestedModel: customer.interested_model ?? "",
+      currentVehicle: customer.current_vehicle ?? "",
+      purchaseMethod: customer.purchase_method ?? "",
+      consultationStatus: customer.consultation_status ?? "신규",
+      nextContactDate: customer.next_contact_date ?? "",
+      likelihood: String(customer.likelihood ?? 3),
+      memo: customer.memo ?? "",
+    });
+
+    setIsModalOpen(true);
+  }
+
+  function closeModal() {
     if (isSaving) {
       return;
     }
 
     setIsModalOpen(false);
+    setEditingCustomerId(null);
     setForm(initialForm);
   }
 
@@ -142,8 +175,7 @@ export default function CustomersPage() {
       return;
     }
 
-    const { error } = await supabase.from("customers").insert({
-      user_id: user.id,
+    const customerData = {
       name: form.name.trim(),
       phone: form.phone.trim(),
       interested_model: form.interestedModel.trim() || null,
@@ -153,18 +185,83 @@ export default function CustomersPage() {
       next_contact_date: form.nextContactDate || null,
       likelihood: Number(form.likelihood),
       memo: form.memo.trim() || null,
-    });
+    };
 
-    setIsSaving(false);
+    if (editingCustomerId) {
+      const { error } = await supabase
+        .from("customers")
+        .update(customerData)
+        .eq("id", editingCustomerId)
+        .eq("user_id", user.id);
 
-    if (error) {
-      alert(`고객을 저장하지 못했습니다.\n${error.message}`);
-      return;
+      setIsSaving(false);
+
+      if (error) {
+        alert(`고객 정보를 수정하지 못했습니다.\n${error.message}`);
+        return;
+      }
+
+      alert("고객 정보가 수정되었습니다.");
+    } else {
+      const { error } = await supabase.from("customers").insert({
+        ...customerData,
+        user_id: user.id,
+      });
+
+      setIsSaving(false);
+
+      if (error) {
+        alert(`고객을 저장하지 못했습니다.\n${error.message}`);
+        return;
+      }
+
+      alert("신규 고객이 등록되었습니다.");
     }
 
     setForm(initialForm);
+    setEditingCustomerId(null);
     setIsModalOpen(false);
 
+    await loadCustomers();
+  }
+
+  async function handleDelete(customer: Customer) {
+    const shouldDelete = window.confirm(
+      `${customer.name} 고객을 정말 삭제하시겠습니까?\n삭제한 정보는 복구하기 어렵습니다.`
+    );
+
+    if (!shouldDelete) {
+      return;
+    }
+
+    setDeletingCustomerId(customer.id);
+
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      setDeletingCustomerId(null);
+      alert("로그인이 만료되었습니다. 다시 로그인해주세요.");
+      router.replace("/login");
+      return;
+    }
+
+    const { error } = await supabase
+      .from("customers")
+      .delete()
+      .eq("id", customer.id)
+      .eq("user_id", user.id);
+
+    setDeletingCustomerId(null);
+
+    if (error) {
+      alert(`고객을 삭제하지 못했습니다.\n${error.message}`);
+      return;
+    }
+
+    alert("고객 정보가 삭제되었습니다.");
     await loadCustomers();
   }
 
@@ -234,12 +331,10 @@ export default function CustomersPage() {
 
         <section className="mt-8 grid gap-4 sm:grid-cols-3">
           <SummaryCard label="전체 고객" value={`${customers.length}명`} />
-
           <SummaryCard
             label="상담 진행"
             value={`${consultationCount}명`}
           />
-
           <SummaryCard
             label="계약 예정"
             value={`${contractExpectedCount}명`}
@@ -275,7 +370,6 @@ export default function CustomersPage() {
         <section className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="flex items-center justify-between border-b border-slate-200 px-6 py-5">
             <h2 className="font-bold">고객 목록</h2>
-
             <p className="text-sm text-slate-500">
               {filteredCustomers.length}명
             </p>
@@ -288,7 +382,6 @@ export default function CustomersPage() {
           ) : filteredCustomers.length === 0 ? (
             <div className="px-6 py-16 text-center">
               <p className="text-slate-500">등록된 고객이 없습니다.</p>
-
               <p className="mt-2 text-sm text-slate-400">
                 신규 고객 등록 버튼을 눌러 첫 고객을 추가해보세요.
               </p>
@@ -298,12 +391,11 @@ export default function CustomersPage() {
               {filteredCustomers.map((customer) => (
                 <article
                   key={customer.id}
-                  className="grid gap-5 px-6 py-5 transition hover:bg-slate-50 md:grid-cols-[1.3fr_1fr_1fr_auto]"
+                  className="grid gap-5 px-6 py-5 transition hover:bg-slate-50 lg:grid-cols-[1.3fr_1fr_1fr_auto_auto]"
                 >
                   <div>
                     <div className="flex flex-wrap items-center gap-3">
                       <h3 className="font-bold">{customer.name}</h3>
-
                       <StatusBadge
                         status={customer.consultation_status ?? "신규"}
                       />
@@ -322,11 +414,9 @@ export default function CustomersPage() {
 
                   <div>
                     <p className="text-xs text-slate-400">관심 차종</p>
-
                     <p className="mt-1 text-sm font-semibold">
                       {customer.interested_model || "미입력"}
                     </p>
-
                     <p className="mt-2 text-xs text-slate-400">
                       구매 방식: {customer.purchase_method || "미정"}
                     </p>
@@ -334,20 +424,38 @@ export default function CustomersPage() {
 
                   <div>
                     <p className="text-xs text-slate-400">다음 연락일</p>
-
                     <p className="mt-1 text-sm font-semibold">
                       {formatDate(customer.next_contact_date)}
                     </p>
-
                     <p className="mt-2 text-xs text-slate-400">
                       보유 차량: {customer.current_vehicle || "미입력"}
                     </p>
                   </div>
 
-                  <div className="md:text-right">
+                  <div>
                     <p className="text-xs text-slate-400">계약 가능성</p>
-
                     <StarRating value={customer.likelihood ?? 3} />
+                  </div>
+
+                  <div className="flex items-center gap-2 lg:justify-end">
+                    <button
+                      type="button"
+                      onClick={() => openEditModal(customer)}
+                      className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold transition hover:bg-slate-100"
+                    >
+                      수정
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(customer)}
+                      disabled={deletingCustomerId === customer.id}
+                      className="rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+                    >
+                      {deletingCustomerId === customer.id
+                        ? "삭제 중"
+                        : "삭제"}
+                    </button>
                   </div>
                 </article>
               ))}
@@ -361,25 +469,28 @@ export default function CustomersPage() {
           className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) {
-              closeRegistrationModal();
+              closeModal();
             }
           }}
         >
           <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
             <div className="flex items-center justify-between border-b border-slate-200 px-6 py-5">
               <div>
-                <h2 className="text-xl font-bold">신규 고객 등록</h2>
+                <h2 className="text-xl font-bold">
+                  {editingCustomerId
+                    ? "고객 정보 수정"
+                    : "신규 고객 등록"}
+                </h2>
 
                 <p className="mt-1 text-sm text-slate-500">
-                  상담에 필요한 고객 정보를 입력하세요.
+                  고객의 상담 정보를 입력하세요.
                 </p>
               </div>
 
               <button
                 type="button"
-                onClick={closeRegistrationModal}
+                onClick={closeModal}
                 className="rounded-lg px-3 py-2 text-slate-500 transition hover:bg-slate-100"
-                aria-label="고객 등록창 닫기"
               >
                 ✕
               </button>
@@ -414,7 +525,6 @@ export default function CustomersPage() {
 
                 <FormField label="관심 차종">
                   <input
-                    type="text"
                     value={form.interestedModel}
                     onChange={(event) =>
                       updateForm("interestedModel", event.target.value)
@@ -426,7 +536,6 @@ export default function CustomersPage() {
 
                 <FormField label="현 보유 차량">
                   <input
-                    type="text"
                     value={form.currentVehicle}
                     onChange={(event) =>
                       updateForm("currentVehicle", event.target.value)
@@ -457,7 +566,10 @@ export default function CustomersPage() {
                   <select
                     value={form.consultationStatus}
                     onChange={(event) =>
-                      updateForm("consultationStatus", event.target.value)
+                      updateForm(
+                        "consultationStatus",
+                        event.target.value
+                      )
                     }
                     className="input-style"
                   >
@@ -505,16 +617,16 @@ export default function CustomersPage() {
                     updateForm("memo", event.target.value)
                   }
                   className="input-style min-h-28 resize-y"
-                  placeholder="고객 요청사항, 상담 내용, 재연락 사유 등을 입력하세요."
+                  placeholder="상담 내용과 고객 요청사항을 입력하세요."
                 />
               </FormField>
 
               <div className="flex justify-end gap-3 border-t border-slate-200 pt-5">
                 <button
                   type="button"
-                  onClick={closeRegistrationModal}
+                  onClick={closeModal}
                   disabled={isSaving}
-                  className="rounded-xl border border-slate-300 px-5 py-3 text-sm font-semibold transition hover:bg-slate-50 disabled:opacity-50"
+                  className="rounded-xl border border-slate-300 px-5 py-3 text-sm font-semibold hover:bg-slate-50 disabled:opacity-50"
                 >
                   취소
                 </button>
@@ -522,9 +634,13 @@ export default function CustomersPage() {
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
                 >
-                  {isSaving ? "저장 중..." : "고객 저장"}
+                  {isSaving
+                    ? "저장 중..."
+                    : editingCustomerId
+                      ? "수정 저장"
+                      : "고객 저장"}
                 </button>
               </div>
             </form>
@@ -562,7 +678,6 @@ function FormField({
       <span className="mb-2 block text-sm font-semibold text-slate-700">
         {label}
       </span>
-
       {children}
     </label>
   );
@@ -594,9 +709,12 @@ function StarRating({ value }: { value: number }) {
 
   return (
     <p className="mt-1 whitespace-nowrap text-sm font-semibold">
-      <span className="text-amber-500">{"★".repeat(safeValue)}</span>
-
-      <span className="text-slate-300">{"★".repeat(5 - safeValue)}</span>
+      <span className="text-amber-500">
+        {"★".repeat(safeValue)}
+      </span>
+      <span className="text-slate-300">
+        {"★".repeat(5 - safeValue)}
+      </span>
     </p>
   );
 }
