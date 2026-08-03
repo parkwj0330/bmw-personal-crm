@@ -85,9 +85,9 @@ export default function HomePage() {
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
 
-  const [userEmail, setUserEmail] = useState("");
+ 
   const [isLoading, setIsLoading] = useState(true);
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
 
   useEffect(() => {
     void checkLoginAndLoadDashboard();
@@ -106,7 +106,7 @@ export default function HomePage() {
       return;
     }
 
-    setUserEmail(user.email ?? "");
+    
 
     await loadDashboardData();
     setIsLoading(false);
@@ -168,27 +168,7 @@ export default function HomePage() {
     }
   }
 
-  async function handleLogout() {
-    const shouldLogout = window.confirm("로그아웃하시겠습니까?");
 
-    if (!shouldLogout) {
-      return;
-    }
-
-    setIsLoggingOut(true);
-
-    const { error } = await supabase.auth.signOut();
-
-    setIsLoggingOut(false);
-
-    if (error) {
-      alert(`로그아웃하지 못했습니다.\n${error.message}`);
-      return;
-    }
-
-    router.replace("/login");
-    router.refresh();
-  }
 
   const consultationCount = customers.filter((customer) =>
     ["상담 중", "견적 발송", "시승 예정", "계약 예정"].includes(
@@ -237,44 +217,7 @@ export default function HomePage() {
 
   return (
     <main className="min-h-screen bg-[#f4f6f8] text-slate-900">
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-5 px-6 py-5">
-          <div>
-            <p className="text-xs font-semibold tracking-[0.25em] text-blue-700">
-              BMW SALES MANAGEMENT
-            </p>
 
-            <h1 className="mt-1 text-2xl font-bold">
-              Personal CRM
-            </h1>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="hidden text-right sm:block">
-              <p className="text-xs text-slate-400">
-                로그인 계정
-              </p>
-
-              <p className="mt-1 text-sm font-semibold text-slate-700">
-                {userEmail || "사용자"}
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={handleLogout}
-              disabled={isLoggingOut}
-              className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold transition hover:bg-slate-50 disabled:opacity-50"
-            >
-              {isLoggingOut ? "로그아웃 중" : "로그아웃"}
-            </button>
-
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-950 text-sm font-bold text-white">
-              WJ
-            </div>
-          </div>
-        </div>
-      </header>
 
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10">
         <section className="rounded-3xl bg-slate-950 px-7 py-9 text-white shadow-lg sm:px-9 sm:py-11">

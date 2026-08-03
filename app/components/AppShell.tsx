@@ -2,7 +2,11 @@
 
 import Link from "next/link";
 import { ReactNode, useEffect, useState } from "react";
-import { usePathname } from "next/navigation";
+import {
+  usePathname,
+  useRouter,
+} from "next/navigation";
+import { supabase } from "@/lib/supabase";
 
 type AppShellProps = {
   children: ReactNode;
@@ -48,15 +52,76 @@ const navigationItems: NavigationItem[] = [
   },
 ];
 
-export default function AppShell({ children }: AppShellProps) {
+export default function AppShell({
+  children,
+}: AppShellProps) {
   const pathname = usePathname();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const router = useRouter();
+
+  const [isMobileMenuOpen, setIsMobileMenuOpen] =
+    useState(false);
+
+  const [userEmail, setUserEmail] = useState("");
+  const [isLoggingOut, setIsLoggingOut] =
+    useState(false);
 
   const isLoginPage = pathname === "/login";
 
   useEffect(() => {
     setIsMobileMenuOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    if (isLoginPage) {
+      setUserEmail("");
+      return;
+    }
+
+    void loadUser();
+  }, [isLoginPage]);
+
+  async function loadUser() {
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser();
+
+    if (error || !user) {
+      setUserEmail("");
+      return;
+    }
+
+    setUserEmail(user.email ?? "");
+  }
+
+  async function handleLogout() {
+    const shouldLogout = window.confirm(
+      "로그아웃하시겠습니까?"
+    );
+
+    if (!shouldLogout) {
+      return;
+    }
+
+    setIsLoggingOut(true);
+
+    const { error } = await supabase.auth.signOut();
+
+    setIsLoggingOut(false);
+
+    if (error) {
+      alert(
+        `로그아웃하지 못했습니다.\n${error.message}`
+      );
+      return;
+    }
+
+    setUserEmail("");
+    setIsMobileMenuOpen(false);
+
+    router.replace("/login");
+    router.refresh();
+  }
 
   if (isLoginPage) {
     return <>{children}</>;
@@ -66,25 +131,39 @@ export default function AppShell({ children }: AppShellProps) {
     <div className="min-h-screen bg-slate-100">
       {/* PC 사이드바 */}
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-slate-200 bg-white lg:flex">
-        <SidebarContent pathname={pathname} />
+        <SidebarContent
+          pathname={pathname}
+          userEmail={userEmail}
+          isLoggingOut={isLoggingOut}
+          onLogout={handleLogout}
+        />
       </aside>
 
-      {/* 모바일 메뉴 */}
+      {/* 모바일 사이드바 */}
       {isMobileMenuOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
           <button
             type="button"
             aria-label="메뉴 닫기"
-            onClick={() => setIsMobileMenuOpen(false)}
+            onClick={() =>
+              setIsMobileMenuOpen(false)
+            }
             className="absolute inset-0 bg-slate-950/50"
           />
 
           <aside className="relative flex h-full w-72 max-w-[85vw] flex-col bg-white shadow-2xl">
-            <SidebarContent pathname={pathname} />
+            <SidebarContent
+              pathname={pathname}
+              userEmail={userEmail}
+              isLoggingOut={isLoggingOut}
+              onLogout={handleLogout}
+            />
 
             <button
               type="button"
-              onClick={() => setIsMobileMenuOpen(false)}
+              onClick={() =>
+                setIsMobileMenuOpen(false)
+              }
               className="absolute right-4 top-4 rounded-lg px-3 py-2 text-slate-500 hover:bg-slate-100"
               aria-label="사이드바 닫기"
             >
@@ -99,33 +178,56 @@ export default function AppShell({ children }: AppShellProps) {
         <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200 bg-white px-4 lg:hidden">
           <button
             type="button"
-            onClick={() => setIsMobileMenuOpen(true)}
+            onClick={() =>
+              setIsMobileMenuOpen(true)
+            }
             className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-xl hover:bg-slate-50"
             aria-label="메뉴 열기"
           >
             ☰
           </button>
 
-          <div className="text-center">
+          <Link href="/" className="text-center">
             <p className="text-[10px] font-semibold tracking-[0.2em] text-blue-700">
               BMW SALES
             </p>
 
-            <p className="text-sm font-bold">Personal CRM</p>
-          </div>
+            <p className="text-sm font-bold">
+              Personal CRM
+            </p>
+          </Link>
 
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-950 text-xs font-bold text-white">
+          <button
+            type="button"
+            onClick={() =>
+              setIsMobileMenuOpen(true)
+            }
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-950 text-xs font-bold text-white"
+            aria-label="계정 메뉴 열기"
+          >
             WJ
-          </div>
+          </button>
         </header>
 
-        <div className="min-h-screen">{children}</div>
+        <div className="min-h-screen">
+          {children}
+        </div>
       </div>
     </div>
   );
 }
 
-function SidebarContent({ pathname }: { pathname: string }) {
+function SidebarContent({
+  pathname,
+  userEmail,
+  isLoggingOut,
+  onLogout,
+}: {
+  pathname: string;
+  userEmail: string;
+  isLoggingOut: boolean;
+  onLogout: () => void;
+}) {
   return (
     <>
       <div className="border-b border-slate-200 px-6 py-6">
@@ -147,7 +249,10 @@ function SidebarContent({ pathname }: { pathname: string }) {
 
         <div className="mt-3 space-y-1">
           {navigationItems.map((item) => {
-            const active = isNavigationActive(pathname, item.href);
+            const active = isNavigationActive(
+              pathname,
+              item.href
+            );
 
             return (
               <Link
@@ -176,7 +281,9 @@ function SidebarContent({ pathname }: { pathname: string }) {
 
                   <span
                     className={`mt-0.5 block truncate text-[11px] ${
-                      active ? "text-blue-100" : "text-slate-400"
+                      active
+                        ? "text-blue-100"
+                        : "text-slate-400"
                     }`}
                   >
                     {item.description}
@@ -193,14 +300,57 @@ function SidebarContent({ pathname }: { pathname: string }) {
           </p>
 
           <div className="mt-3 space-y-2 px-3">
-            <ComingSoonItem icon="💬" title="메시지 센터" />
-            <ComingSoonItem icon="⚙️" title="자동화 센터" />
-            <ComingSoonItem icon="🤖" title="에이전트 기록" />
+            <ComingSoonItem
+              icon="💬"
+              title="메시지 센터"
+            />
+
+            <ComingSoonItem
+              icon="⚙️"
+              title="자동화 센터"
+            />
+
+            <ComingSoonItem
+              icon="🤖"
+              title="에이전트 기록"
+            />
           </div>
         </div>
       </nav>
 
-      <div className="border-t border-slate-200 p-4">
+      <div className="space-y-3 border-t border-slate-200 p-4">
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-950 text-xs font-bold text-white">
+              WJ
+            </div>
+
+            <div className="min-w-0">
+              <p className="text-xs text-slate-400">
+                로그인 계정
+              </p>
+
+              <p
+                className="mt-1 truncate text-sm font-semibold text-slate-700"
+                title={userEmail}
+              >
+                {userEmail || "사용자"}
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={onLogout}
+            disabled={isLoggingOut}
+            className="mt-4 w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+          >
+            {isLoggingOut
+              ? "로그아웃 중..."
+              : "로그아웃"}
+          </button>
+        </div>
+
         <div className="rounded-2xl bg-slate-950 p-4 text-white">
           <p className="text-xs font-semibold text-blue-300">
             AUTOMATION PROJECT
@@ -211,7 +361,8 @@ function SidebarContent({ pathname }: { pathname: string }) {
           </p>
 
           <p className="mt-2 text-xs leading-5 text-slate-400">
-            고객·메시지·일정·에이전트를 단계적으로 연결합니다.
+            고객·메시지·일정·에이전트를
+            단계적으로 연결합니다.
           </p>
         </div>
       </div>
@@ -233,17 +384,28 @@ function ComingSoonItem({
       </span>
 
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold">{title}</p>
-        <p className="mt-0.5 text-[10px]">준비 중</p>
+        <p className="text-sm font-semibold">
+          {title}
+        </p>
+
+        <p className="mt-0.5 text-[10px]">
+          준비 중
+        </p>
       </div>
     </div>
   );
 }
 
-function isNavigationActive(pathname: string, href: string) {
+function isNavigationActive(
+  pathname: string,
+  href: string
+) {
   if (href === "/") {
     return pathname === "/";
   }
 
-  return pathname === href || pathname.startsWith(`${href}/`);
+  return (
+    pathname === href ||
+    pathname.startsWith(`${href}/`)
+  );
 }
