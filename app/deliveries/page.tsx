@@ -10,6 +10,9 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import DeliveryChecklist, {
+  DeliveryChecklistValues,
+} from "./DeliveryChecklist";
 
 type CustomerOption = {
   id: string;
@@ -38,6 +41,17 @@ type Delivery = {
   delivery_status: string | null;
   follow_up_date: string | null;
   memo: string | null;
+
+  insurance_completed: boolean;
+  registration_completed: boolean;
+  tinting_completed: boolean;
+  blackbox_completed: boolean;
+  ppf_completed: boolean;
+  coating_completed: boolean;
+  accessories_completed: boolean;
+  delivery_photo_completed: boolean;
+  handover_completed: boolean;
+
   created_at: string;
 };
 
@@ -149,6 +163,15 @@ export default function DeliveriesPage() {
         delivery_status,
         follow_up_date,
         memo,
+        insurance_completed,
+        registration_completed,
+        tinting_completed,
+        blackbox_completed,
+        ppf_completed,
+        coating_completed,
+        accessories_completed,
+        delivery_photo_completed,
+        handover_completed,
         created_at
         `
       )
@@ -157,6 +180,7 @@ export default function DeliveriesPage() {
 
     if (error) {
       alert(`출고 고객을 불러오지 못했습니다.\n${error.message}`);
+      setIsLoading(false);
       return;
     }
 
@@ -237,7 +261,6 @@ export default function DeliveriesPage() {
         ...previous,
         customerId: "",
       }));
-
       return;
     }
 
@@ -479,7 +502,6 @@ export default function DeliveriesPage() {
         <section className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="flex items-center justify-between border-b border-slate-200 px-6 py-5">
             <h2 className="font-bold">출고 고객 목록</h2>
-
             <p className="text-sm text-slate-500">
               {filteredDeliveries.length}건
             </p>
@@ -504,80 +526,100 @@ export default function DeliveriesPage() {
               {filteredDeliveries.map((delivery) => (
                 <article
                   key={delivery.id}
-                  className="grid gap-5 px-6 py-5 transition hover:bg-slate-50 lg:grid-cols-[1.1fr_1.1fr_1fr_1fr_auto]"
+                  className="px-6 py-5 transition hover:bg-slate-50"
                 >
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="font-bold">
-                        {delivery.customer_name}
-                      </h3>
+                  <div className="grid gap-5 lg:grid-cols-[1.1fr_1.1fr_1fr_1fr_auto]">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="font-bold">
+                          {delivery.customer_name}
+                        </h3>
 
-                      <DeliveryStatusBadge
-                        status={delivery.delivery_status ?? "출고 준비"}
-                      />
+                        <DeliveryStatusBadge
+                          status={delivery.delivery_status ?? "출고 준비"}
+                        />
+                      </div>
+
+                      <p className="mt-2 text-sm text-slate-500">
+                        {delivery.phone}
+                      </p>
                     </div>
 
-                    <p className="mt-2 text-sm text-slate-500">
-                      {delivery.phone}
-                    </p>
+                    <div>
+                      <p className="text-xs text-slate-400">출고 차량</p>
+
+                      <p className="mt-1 text-sm font-semibold">
+                        {delivery.vehicle_model}
+                      </p>
+
+                      <p className="mt-2 text-xs text-slate-400">
+                        {delivery.trim_name || "트림 미입력"}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-xs text-slate-400">출고 예정일</p>
+
+                      <p className="mt-1 text-sm font-semibold">
+                        {formatDate(delivery.delivery_date)}
+                      </p>
+
+                      <p className="mt-2 text-xs text-slate-400">
+                        계약일: {formatDate(delivery.contract_date)}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-xs text-slate-400">진행 상태</p>
+
+                      <p className="mt-1 text-sm">
+                        보험: {delivery.insurance_status || "미확인"}
+                      </p>
+
+                      <p className="mt-1 text-sm">
+                        등록: {delivery.registration_status || "준비 중"}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2 lg:justify-end">
+                      <button
+                        type="button"
+                        onClick={() => openEditModal(delivery)}
+                        className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold hover:bg-slate-100"
+                      >
+                        수정
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(delivery)}
+                        disabled={deletingDeliveryId === delivery.id}
+                        className="rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50"
+                      >
+                        {deletingDeliveryId === delivery.id
+                          ? "삭제 중"
+                          : "삭제"}
+                      </button>
+                    </div>
                   </div>
 
-                  <div>
-                    <p className="text-xs text-slate-400">출고 차량</p>
-
-                    <p className="mt-1 text-sm font-semibold">
-                      {delivery.vehicle_model}
-                    </p>
-
-                    <p className="mt-2 text-xs text-slate-400">
-                      {delivery.trim_name || "트림 미입력"}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-xs text-slate-400">출고 예정일</p>
-
-                    <p className="mt-1 text-sm font-semibold">
-                      {formatDate(delivery.delivery_date)}
-                    </p>
-
-                    <p className="mt-2 text-xs text-slate-400">
-                      계약일: {formatDate(delivery.contract_date)}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-xs text-slate-400">진행 상태</p>
-
-                    <p className="mt-1 text-sm">
-                      보험: {delivery.insurance_status || "미확인"}
-                    </p>
-
-                    <p className="mt-1 text-sm">
-                      등록: {delivery.registration_status || "준비 중"}
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-2 lg:justify-end">
-                    <button
-                      type="button"
-                      onClick={() => openEditModal(delivery)}
-                      className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold hover:bg-slate-100"
-                    >
-                      수정
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(delivery)}
-                      disabled={deletingDeliveryId === delivery.id}
-                      className="rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50"
-                    >
-                      {deletingDeliveryId === delivery.id
-                        ? "삭제 중"
-                        : "삭제"}
-                    </button>
-                  </div>
+                  <DeliveryChecklist
+                    deliveryId={delivery.id}
+                    initialValues={{
+                      insurance_completed: delivery.insurance_completed,
+                      registration_completed:
+                        delivery.registration_completed,
+                      tinting_completed: delivery.tinting_completed,
+                      blackbox_completed: delivery.blackbox_completed,
+                      ppf_completed: delivery.ppf_completed,
+                      coating_completed: delivery.coating_completed,
+                      accessories_completed:
+                        delivery.accessories_completed,
+                      delivery_photo_completed:
+                        delivery.delivery_photo_completed,
+                      handover_completed: delivery.handover_completed,
+                    } satisfies DeliveryChecklistValues}
+                  />
                 </article>
               ))}
             </div>
