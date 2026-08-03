@@ -5,6 +5,7 @@ import { FormEvent, ReactNode, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import CustomerFiles from "../CustomerFiles";
+import CustomerContracts from "../CustomerContracts";
 
 type Customer = {
   id: string;
@@ -351,6 +352,7 @@ export default function CustomerDetailPage() {
   customerId={customer.id}
   customerName={customer.name}
 />
+<CustomerContracts customerId={customer.id} />
           </div>
 
           <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">

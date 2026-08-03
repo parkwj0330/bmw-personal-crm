@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import ContractDashboardWidget from "./components/ContractDashboardWidget";
 
 type Customer = {
   id: string;
@@ -68,6 +69,12 @@ const menuItems: MenuItem[] = [
     icon: "🚗",
     href: "/deliveries",
   },
+  {
+  title: "계약 관리",
+  description: "차량 계약, 계약금과 금융 조건을 관리합니다.",
+  icon: "📝",
+  href: "/contracts",
+},
 ];
 
 export default function HomePage() {
@@ -340,7 +347,7 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="grid gap-5 md:grid-cols-3">
+          <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
             {menuItems.map((item) => (
               <Link
                 key={item.title}
@@ -489,6 +496,7 @@ export default function HomePage() {
             )}
           </DashboardPanel>
         </section>
+        <ContractDashboardWidget />
 
         <section className="mt-6">
           <DashboardPanel
