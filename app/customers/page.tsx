@@ -395,7 +395,12 @@ export default function CustomersPage() {
                 >
                   <div>
                     <div className="flex flex-wrap items-center gap-3">
-                      <h3 className="font-bold">{customer.name}</h3>
+                      <Link
+  href={`/customers/${customer.id}`}
+  className="font-bold transition hover:text-blue-600"
+>
+  {customer.name}
+</Link>
                       <StatusBadge
                         status={customer.consultation_status ?? "신규"}
                       />
