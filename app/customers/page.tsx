@@ -302,14 +302,9 @@ export default function CustomersPage() {
       <div className="mx-auto max-w-7xl">
         <header className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <Link
-              href="/"
-              className="text-sm font-semibold text-blue-700 transition hover:text-blue-500"
-            >
-              ← 대시보드로 돌아가기
-            </Link>
 
-            <p className="mt-6 text-xs font-semibold tracking-[0.25em] text-blue-700">
+
+            <p className="text-xs font-semibold tracking-[0.25em] text-blue-700">
               BMW PERSONAL CRM
             </p>
 

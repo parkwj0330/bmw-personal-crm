@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -526,14 +526,9 @@ export default function ContractsPage() {
       <div className="mx-auto max-w-7xl">
         <header className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <Link
-              href="/"
-              className="text-sm font-semibold text-blue-700 hover:text-blue-500"
-            >
-              ← 대시보드로 돌아가기
-            </Link>
+            
 
-            <p className="mt-6 text-xs font-semibold tracking-[0.25em] text-blue-700">
+            <p className="text-xs font-semibold tracking-[0.25em] text-blue-700">
               BMW PERSONAL CRM
             </p>
 
