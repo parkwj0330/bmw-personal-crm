@@ -14,6 +14,7 @@ import {
   calculateBalance,
   calculateTotalPrice,
 } from "./utils";
+import PageHeader from "../components/PageHeader";
 
 export type Contract = {
   id: string;
@@ -524,32 +525,19 @@ export default function ContractsPage() {
   return (
     <main className="min-h-screen bg-slate-100 px-4 py-8 text-slate-900 sm:px-6">
       <div className="mx-auto max-w-7xl">
-        <header className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            
-
-            <p className="text-xs font-semibold tracking-[0.25em] text-blue-700">
-              BMW PERSONAL CRM
-            </p>
-
-            <h1 className="mt-2 text-3xl font-bold">
-              계약 관리
-            </h1>
-
-            <p className="mt-2 text-sm text-slate-500">
-              차량 계약, 계약금, 금융 조건과 출고 예정일을
-              관리합니다.
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={openNewContract}
-            className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-500"
-          >
-            + 신규 계약 등록
-          </button>
-        </header>
+        <PageHeader
+  title="계약 관리"
+  description="차량 계약, 계약금, 금융 조건과 출고 예정일을 관리합니다."
+  action={
+    <button
+      type="button"
+      onClick={openNewContract}
+      className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-500"
+    >
+      + 신규 계약 등록
+    </button>
+  }
+/>
 
         <SummaryCards
           totalCount={contracts.length}

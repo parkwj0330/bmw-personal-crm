@@ -10,6 +10,7 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import PageHeader from "../components/PageHeader";
 
 type Customer = {
   id: string;
@@ -420,29 +421,19 @@ export default function SchedulePage() {
   return (
     <main className="min-h-screen bg-slate-100 px-4 py-8 text-slate-900 sm:px-6">
       <div className="mx-auto max-w-7xl">
-        <header className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-           
-
-            <p className="text-xs font-semibold tracking-[0.25em] text-blue-700">
-              BMW PERSONAL CRM
-            </p>
-
-            <h1 className="mt-2 text-3xl font-bold">일정 관리</h1>
-
-            <p className="mt-2 text-sm text-slate-500">
-              고객 연락, 시승, 계약과 출고 일정을 관리합니다.
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => openRegistrationModal()}
-            className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-500"
-          >
-            + 새 일정 등록
-          </button>
-        </header>
+        <PageHeader
+  title="일정 관리"
+  description="고객 연락, 시승, 계약과 출고 일정을 관리합니다."
+  action={
+    <button
+      type="button"
+      onClick={() => openRegistrationModal()}
+      className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-500"
+    >
+      + 새 일정 등록
+    </button>
+  }
+/>
 
         <section className="mt-8 grid gap-4 sm:grid-cols-3">
           <SummaryCard
