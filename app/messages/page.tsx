@@ -10,6 +10,7 @@ import {
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import PageHeader from "../components/PageHeader";
+import MessageOutbox from "./MessageOutbox";
 
 type MessageTemplate = {
   id: string;
@@ -43,6 +44,8 @@ type TemplateForm = {
   isActive: boolean;
 };
 
+type MessageCenterTab = "templates" | "outbox";
+
 function createInitialForm(): TemplateForm {
   return {
     templateKey: createTemplateKey(),
@@ -63,7 +66,9 @@ export default function MessagesPage() {
   const router = useRouter();
 
   const [templates, setTemplates] = useState<MessageTemplate[]>([]);
-  const [form, setForm] = useState<TemplateForm>(createInitialForm());
+  const [form, setForm] = useState<TemplateForm>(
+    createInitialForm()
+  );
 
   const [editingTemplateId, setEditingTemplateId] = useState<
     string | null
@@ -71,6 +76,9 @@ export default function MessagesPage() {
 
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("전체");
+
+  const [activeTab, setActiveTab] =
+    useState<MessageCenterTab>("templates");
 
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -157,7 +165,8 @@ export default function MessagesPage() {
       variables: normalizeVariables(template.variables).join(", "),
       requiresMarketingConsent:
         template.requires_marketing_consent,
-      requiresNightConsent: template.requires_night_consent,
+      requiresNightConsent:
+        template.requires_night_consent,
       isActive: template.is_active,
     });
 
@@ -220,7 +229,11 @@ export default function MessagesPage() {
 
     if (userError || !user) {
       setIsSaving(false);
-      alert("로그인이 만료되었습니다. 다시 로그인해주세요.");
+
+      alert(
+        "로그인이 만료되었습니다. 다시 로그인해주세요."
+      );
+
       router.replace("/login");
       return;
     }
@@ -239,8 +252,10 @@ export default function MessagesPage() {
       subject: form.subject.trim() || null,
       content: form.content.trim(),
       variables: parseVariables(form.variables),
-      requires_marketing_consent: requiresMarketingConsent,
-      requires_night_consent: form.requiresNightConsent,
+      requires_marketing_consent:
+        requiresMarketingConsent,
+      requires_night_consent:
+        form.requiresNightConsent,
       is_active: form.isActive,
     };
 
@@ -296,7 +311,9 @@ export default function MessagesPage() {
     await loadTemplates();
   }
 
-  async function handleToggleActive(template: MessageTemplate) {
+  async function handleToggleActive(
+    template: MessageTemplate
+  ) {
     const { error } = await supabase
       .from("message_templates")
       .update({
@@ -315,7 +332,9 @@ export default function MessagesPage() {
     await loadTemplates();
   }
 
-  async function handleDelete(template: MessageTemplate) {
+  async function handleDelete(
+    template: MessageTemplate
+  ) {
     const shouldDelete = window.confirm(
       `"${template.template_name}" 템플릿을 삭제하시겠습니까?`
     );
@@ -360,7 +379,8 @@ export default function MessagesPage() {
         .toLowerCase();
 
       const matchesSearch =
-        keyword === "" || searchableText.includes(keyword);
+        keyword === "" ||
+        searchableText.includes(keyword);
 
       const matchesCategory =
         categoryFilter === "전체" ||
@@ -375,11 +395,13 @@ export default function MessagesPage() {
   ).length;
 
   const informationCount = templates.filter(
-    (template) => template.message_type === "정보성"
+    (template) =>
+      template.message_type === "정보성"
   ).length;
 
   const marketingCount = templates.filter(
-    (template) => template.message_type === "광고성"
+    (template) =>
+      template.message_type === "광고성"
   ).length;
 
   return (
@@ -388,538 +410,649 @@ export default function MessagesPage() {
         <PageHeader
           eyebrow="BMW AUTOMATION"
           title="메시지 센터"
-          description="생일, 출고기념일, 금융 만기와 고객 안내에 사용할 메시지 템플릿을 관리합니다."
-          action={
-            <button
-              type="button"
-              onClick={openRegistrationModal}
-              className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
-            >
-              + 메시지 템플릿 등록
-            </button>
+          description={
+            activeTab === "templates"
+              ? "생일, 출고기념일, 금융 만기와 고객 안내에 사용할 메시지 템플릿을 관리합니다."
+              : "고객에게 전달할 메시지를 준비하고 승인, 예약 및 발송 상태를 관리합니다."
           }
-        />
-
-        <section className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <SummaryCard
-            label="전체 템플릿"
-            value={`${templates.length}개`}
-          />
-
-          <SummaryCard
-            label="활성 템플릿"
-            value={`${activeCount}개`}
-          />
-
-          <SummaryCard
-            label="정보성 메시지"
-            value={`${informationCount}개`}
-          />
-
-          <SummaryCard
-            label="광고성 메시지"
-            value={`${marketingCount}개`}
-          />
-        </section>
-
-        <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <input
-              type="search"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="템플릿 이름, 키 또는 메시지 검색"
-              className="flex-1 rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-blue-500"
-            />
-
-            <select
-              value={categoryFilter}
-              onChange={(event) =>
-                setCategoryFilter(event.target.value)
-              }
-              className="rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-blue-500"
-            >
-              <option value="전체">전체 분류</option>
-              <option value="birthday">생일</option>
-              <option value="delivery_anniversary">
-                출고기념일
-              </option>
-              <option value="finance_maturity">
-                금융 만기
-              </option>
-              <option value="vehicle_interest">
-                관심 차종
-              </option>
-              <option value="follow_up">재연락</option>
-              <option value="custom">사용자 정의</option>
-            </select>
-          </div>
-        </section>
-
-        <section className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="flex items-center justify-between border-b border-slate-200 px-6 py-5">
-            <div>
-              <h2 className="font-bold">메시지 템플릿</h2>
-
-              <p className="mt-1 text-sm text-slate-500">
-                자동화 규칙에서 사용할 메시지 내용을 관리합니다.
-              </p>
-            </div>
-
-            <p className="text-sm text-slate-500">
-              {filteredTemplates.length}개
-            </p>
-          </div>
-
-          {isLoading ? (
-            <div className="px-6 py-16 text-center text-slate-500">
-              메시지 템플릿을 불러오는 중입니다.
-            </div>
-          ) : filteredTemplates.length === 0 ? (
-            <div className="px-6 py-16 text-center">
-              <p className="text-slate-500">
-                등록된 메시지 템플릿이 없습니다.
-              </p>
-
+          action={
+            activeTab === "templates" ? (
               <button
                 type="button"
                 onClick={openRegistrationModal}
-                className="mt-4 text-sm font-semibold text-blue-700 hover:text-blue-500"
+                className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
               >
-                첫 메시지 템플릿 등록하기
+                + 메시지 템플릿 등록
               </button>
-            </div>
-          ) : (
-            <div className="grid gap-5 p-5 lg:grid-cols-2">
-              {filteredTemplates.map((template) => {
-                const variables = normalizeVariables(
-                  template.variables
-                );
+            ) : undefined
+          }
+        />
 
-                return (
-                  <article
-                    key={template.id}
-                    className="rounded-2xl border border-slate-200 p-5"
-                  >
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <CategoryBadge
-                            category={template.category}
-                          />
+        <div className="mt-8 inline-flex rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
+          <button
+            type="button"
+            onClick={() => setActiveTab("templates")}
+            className={`rounded-lg px-5 py-2.5 text-sm font-semibold transition ${
+              activeTab === "templates"
+                ? "bg-blue-600 text-white shadow-sm"
+                : "text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+            }`}
+          >
+            템플릿 관리
+          </button>
 
-                          <MessageTypeBadge
-                            type={template.message_type}
-                          />
+          <button
+            type="button"
+            onClick={() => setActiveTab("outbox")}
+            className={`rounded-lg px-5 py-2.5 text-sm font-semibold transition ${
+              activeTab === "outbox"
+                ? "bg-blue-600 text-white shadow-sm"
+                : "text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+            }`}
+          >
+            발송 대기열
+          </button>
+        </div>
 
-                          <ActiveBadge
-                            active={template.is_active}
-                          />
-                        </div>
+        {activeTab === "templates" && (
+          <>
+            <section className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <SummaryCard
+                label="전체 템플릿"
+                value={`${templates.length}개`}
+              />
 
-                        <h3 className="mt-3 text-lg font-bold">
-                          {template.template_name}
-                        </h3>
+              <SummaryCard
+                label="활성 템플릿"
+                value={`${activeCount}개`}
+              />
 
-                        <p className="mt-1 break-all text-xs text-slate-400">
-                          {template.template_key}
-                        </p>
-                      </div>
+              <SummaryCard
+                label="정보성 메시지"
+                value={`${informationCount}개`}
+              />
 
-                      <p className="shrink-0 rounded-lg bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-600">
-                        {template.channel}
-                      </p>
-                    </div>
+              <SummaryCard
+                label="광고성 메시지"
+                value={`${marketingCount}개`}
+              />
+            </section>
 
-                    {template.subject && (
-                      <div className="mt-5">
-                        <p className="text-xs text-slate-400">
-                          제목
-                        </p>
+            <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <input
+                  type="search"
+                  value={search}
+                  onChange={(event) =>
+                    setSearch(event.target.value)
+                  }
+                  placeholder="템플릿 이름, 키 또는 메시지 검색"
+                  className="flex-1 rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-blue-500"
+                />
 
-                        <p className="mt-1 text-sm font-semibold">
-                          {template.subject}
-                        </p>
-                      </div>
-                    )}
+                <select
+                  value={categoryFilter}
+                  onChange={(event) =>
+                    setCategoryFilter(event.target.value)
+                  }
+                  className="rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-blue-500"
+                >
+                  <option value="전체">전체 분류</option>
+                  <option value="birthday">
+                    생일
+                  </option>
+                  <option value="delivery_anniversary">
+                    출고기념일
+                  </option>
+                  <option value="finance_maturity">
+                    금융 만기
+                  </option>
+                  <option value="vehicle_interest">
+                    관심 차종
+                  </option>
+                  <option value="follow_up">
+                    재연락
+                  </option>
+                  <option value="custom">
+                    사용자 정의
+                  </option>
+                </select>
+              </div>
+            </section>
 
-                    <div className="mt-5 rounded-xl bg-slate-50 p-4">
-                      <p className="whitespace-pre-wrap text-sm leading-7 text-slate-600">
-                        {template.content}
-                      </p>
-                    </div>
+            <section className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+              <div className="flex items-center justify-between border-b border-slate-200 px-6 py-5">
+                <div>
+                  <h2 className="font-bold">
+                    메시지 템플릿
+                  </h2>
 
-                    {variables.length > 0 && (
-                      <div className="mt-4">
-                        <p className="text-xs text-slate-400">
-                          사용 변수
-                        </p>
+                  <p className="mt-1 text-sm text-slate-500">
+                    자동화 규칙에서 사용할 메시지 내용을 관리합니다.
+                  </p>
+                </div>
 
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {variables.map((variable) => (
-                            <span
-                              key={variable}
-                              className="rounded-lg bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700"
-                            >
-                              {"{{"}
-                              {variable}
-                              {"}}"}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="mt-5 flex flex-wrap gap-2">
-                      {template.requires_marketing_consent && (
-                        <RequirementBadge text="마케팅 동의 필요" />
-                      )}
-
-                      {template.requires_night_consent && (
-                        <RequirementBadge text="야간 동의 필요" />
-                      )}
-
-                      {!template.requires_marketing_consent &&
-                        !template.requires_night_consent && (
-                          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-500">
-                            별도 동의 조건 없음
-                          </span>
-                        )}
-                    </div>
-
-                    <div className="mt-5 flex flex-wrap justify-end gap-2 border-t border-slate-200 pt-4">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          handleToggleActive(template)
-                        }
-                        className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold hover:bg-slate-100"
-                      >
-                        {template.is_active
-                          ? "비활성화"
-                          : "활성화"}
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => openEditModal(template)}
-                        className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold hover:bg-slate-100"
-                      >
-                        수정
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(template)}
-                        disabled={
-                          deletingTemplateId === template.id
-                        }
-                        className="rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50"
-                      >
-                        {deletingTemplateId === template.id
-                          ? "삭제 중"
-                          : "삭제"}
-                      </button>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          )}
-        </section>
-      </div>
-
-      {isModalOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) {
-              closeModal();
-            }
-          }}
-        >
-          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-200 px-6 py-5">
-              <div>
-                <h2 className="text-xl font-bold">
-                  {editingTemplateId
-                    ? "메시지 템플릿 수정"
-                    : "메시지 템플릿 등록"}
-                </h2>
-
-                <p className="mt-1 text-sm text-slate-500">
-                  자동화에 사용할 메시지 내용과 발송 조건을
-                  설정합니다.
+                <p className="text-sm text-slate-500">
+                  {filteredTemplates.length}개
                 </p>
               </div>
 
-              <button
-                type="button"
-                onClick={closeModal}
-                className="rounded-lg px-3 py-2 text-slate-500 hover:bg-slate-100"
+              {isLoading ? (
+                <div className="px-6 py-16 text-center text-slate-500">
+                  메시지 템플릿을 불러오는 중입니다.
+                </div>
+              ) : filteredTemplates.length === 0 ? (
+                <div className="px-6 py-16 text-center">
+                  <p className="text-slate-500">
+                    등록된 메시지 템플릿이 없습니다.
+                  </p>
+
+                  <button
+                    type="button"
+                    onClick={openRegistrationModal}
+                    className="mt-4 text-sm font-semibold text-blue-700 hover:text-blue-500"
+                  >
+                    첫 메시지 템플릿 등록하기
+                  </button>
+                </div>
+              ) : (
+                <div className="grid gap-5 p-5 lg:grid-cols-2">
+                  {filteredTemplates.map((template) => {
+                    const variables =
+                      normalizeVariables(
+                        template.variables
+                      );
+
+                    return (
+                      <article
+                        key={template.id}
+                        className="rounded-2xl border border-slate-200 p-5"
+                      >
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <CategoryBadge
+                                category={
+                                  template.category
+                                }
+                              />
+
+                              <MessageTypeBadge
+                                type={
+                                  template.message_type
+                                }
+                              />
+
+                              <ActiveBadge
+                                active={
+                                  template.is_active
+                                }
+                              />
+                            </div>
+
+                            <h3 className="mt-3 text-lg font-bold">
+                              {template.template_name}
+                            </h3>
+
+                            <p className="mt-1 break-all text-xs text-slate-400">
+                              {template.template_key}
+                            </p>
+                          </div>
+
+                          <p className="shrink-0 rounded-lg bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-600">
+                            {template.channel}
+                          </p>
+                        </div>
+
+                        {template.subject && (
+                          <div className="mt-5">
+                            <p className="text-xs text-slate-400">
+                              제목
+                            </p>
+
+                            <p className="mt-1 text-sm font-semibold">
+                              {template.subject}
+                            </p>
+                          </div>
+                        )}
+
+                        <div className="mt-5 rounded-xl bg-slate-50 p-4">
+                          <p className="whitespace-pre-wrap text-sm leading-7 text-slate-600">
+                            {template.content}
+                          </p>
+                        </div>
+
+                        {variables.length > 0 && (
+                          <div className="mt-4">
+                            <p className="text-xs text-slate-400">
+                              사용 변수
+                            </p>
+
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {variables.map(
+                                (variable) => (
+                                  <span
+                                    key={variable}
+                                    className="rounded-lg bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700"
+                                  >
+                                    {"{{"}
+                                    {variable}
+                                    {"}}"}
+                                  </span>
+                                )
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="mt-5 flex flex-wrap gap-2">
+                          {template.requires_marketing_consent && (
+                            <RequirementBadge text="마케팅 동의 필요" />
+                          )}
+
+                          {template.requires_night_consent && (
+                            <RequirementBadge text="야간 동의 필요" />
+                          )}
+
+                          {!template.requires_marketing_consent &&
+                            !template.requires_night_consent && (
+                              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-500">
+                                별도 동의 조건 없음
+                              </span>
+                            )}
+                        </div>
+
+                        <div className="mt-5 flex flex-wrap justify-end gap-2 border-t border-slate-200 pt-4">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleToggleActive(
+                                template
+                              )
+                            }
+                            className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold hover:bg-slate-100"
+                          >
+                            {template.is_active
+                              ? "비활성화"
+                              : "활성화"}
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              openEditModal(template)
+                            }
+                            className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold hover:bg-slate-100"
+                          >
+                            수정
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleDelete(template)
+                            }
+                            disabled={
+                              deletingTemplateId ===
+                              template.id
+                            }
+                            className="rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50"
+                          >
+                            {deletingTemplateId ===
+                            template.id
+                              ? "삭제 중"
+                              : "삭제"}
+                          </button>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+          </>
+        )}
+
+        {activeTab === "outbox" && (
+          <div className="mt-8">
+            <MessageOutbox />
+          </div>
+        )}
+      </div>
+
+      {activeTab === "templates" &&
+        isModalOpen && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4"
+            onMouseDown={(event) => {
+              if (
+                event.target === event.currentTarget
+              ) {
+                closeModal();
+              }
+            }}
+          >
+            <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
+              <div className="flex items-center justify-between border-b border-slate-200 px-6 py-5">
+                <div>
+                  <h2 className="text-xl font-bold">
+                    {editingTemplateId
+                      ? "메시지 템플릿 수정"
+                      : "메시지 템플릿 등록"}
+                  </h2>
+
+                  <p className="mt-1 text-sm text-slate-500">
+                    자동화에 사용할 메시지 내용과 발송 조건을 설정합니다.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={closeModal}
+                  className="rounded-lg px-3 py-2 text-slate-500 hover:bg-slate-100"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <form
+                onSubmit={handleSubmit}
+                className="space-y-7 p-6"
               >
-                ✕
-              </button>
-            </div>
+                <section>
+                  <h3 className="font-bold">
+                    기본 정보
+                  </h3>
 
-            <form
-              onSubmit={handleSubmit}
-              className="space-y-7 p-6"
-            >
-              <section>
-                <h3 className="font-bold">기본 정보</h3>
+                  <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                    <FormField label="템플릿 이름 *">
+                      <input
+                        value={form.templateName}
+                        onChange={(event) =>
+                          updateForm(
+                            "templateName",
+                            event.target.value
+                          )
+                        }
+                        className="input-style"
+                        placeholder="생일 축하 메시지"
+                        autoFocus
+                      />
+                    </FormField>
 
-                <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                  <FormField label="템플릿 이름 *">
-                    <input
-                      value={form.templateName}
-                      onChange={(event) =>
-                        updateForm(
-                          "templateName",
-                          event.target.value
-                        )
+                    <FormField label="템플릿 키 *">
+                      <input
+                        value={form.templateKey}
+                        onChange={(event) =>
+                          updateForm(
+                            "templateKey",
+                            event.target.value
+                              .toLowerCase()
+                              .replace(
+                                /[^a-z0-9_]/g,
+                                ""
+                              )
+                          )
+                        }
+                        className="input-style"
+                        placeholder="birthday_default"
+                      />
+                    </FormField>
+
+                    <FormField label="메시지 분류">
+                      <select
+                        value={form.category}
+                        onChange={(event) =>
+                          updateForm(
+                            "category",
+                            event.target.value
+                          )
+                        }
+                        className="input-style"
+                      >
+                        <option value="birthday">
+                          생일
+                        </option>
+                        <option value="delivery_anniversary">
+                          출고기념일
+                        </option>
+                        <option value="finance_maturity">
+                          금융 만기
+                        </option>
+                        <option value="vehicle_interest">
+                          관심 차종
+                        </option>
+                        <option value="follow_up">
+                          재연락
+                        </option>
+                        <option value="custom">
+                          사용자 정의
+                        </option>
+                      </select>
+                    </FormField>
+
+                    <FormField label="메시지 유형">
+                      <select
+                        value={form.messageType}
+                        onChange={(event) => {
+                          const value =
+                            event.target.value;
+
+                          updateForm(
+                            "messageType",
+                            value
+                          );
+
+                          if (value === "광고성") {
+                            updateForm(
+                              "requiresMarketingConsent",
+                              true
+                            );
+                          }
+                        }}
+                        className="input-style"
+                      >
+                        <option value="정보성">
+                          정보성
+                        </option>
+                        <option value="광고성">
+                          광고성
+                        </option>
+                      </select>
+                    </FormField>
+
+                    <FormField label="발송 채널">
+                      <select
+                        value={form.channel}
+                        onChange={(event) =>
+                          updateForm(
+                            "channel",
+                            event.target.value
+                          )
+                        }
+                        className="input-style"
+                      >
+                        <option value="문자">
+                          문자
+                        </option>
+                        <option value="카카오톡">
+                          카카오톡
+                        </option>
+                        <option value="텔레그램">
+                          텔레그램
+                        </option>
+                        <option value="이메일">
+                          이메일
+                        </option>
+                      </select>
+                    </FormField>
+
+                    <FormField label="활성 상태">
+                      <select
+                        value={
+                          form.isActive
+                            ? "active"
+                            : "inactive"
+                        }
+                        onChange={(event) =>
+                          updateForm(
+                            "isActive",
+                            event.target.value ===
+                              "active"
+                          )
+                        }
+                        className="input-style"
+                      >
+                        <option value="active">
+                          활성
+                        </option>
+                        <option value="inactive">
+                          비활성
+                        </option>
+                      </select>
+                    </FormField>
+                  </div>
+                </section>
+
+                <section className="border-t border-slate-200 pt-7">
+                  <h3 className="font-bold">
+                    메시지 내용
+                  </h3>
+
+                  <div className="mt-4 space-y-4">
+                    <FormField label="메시지 제목">
+                      <input
+                        value={form.subject}
+                        onChange={(event) =>
+                          updateForm(
+                            "subject",
+                            event.target.value
+                          )
+                        }
+                        className="input-style"
+                        placeholder="채널에서 제목을 지원할 때 사용합니다."
+                      />
+                    </FormField>
+
+                    <FormField label="메시지 내용 *">
+                      <textarea
+                        value={form.content}
+                        onChange={(event) =>
+                          updateForm(
+                            "content",
+                            event.target.value
+                          )
+                        }
+                        className="input-style min-h-48 resize-y"
+                        placeholder={`안녕하세요, {{customer_name}} 고객님.\nBMW 평택전시장입니다.`}
+                      />
+                    </FormField>
+
+                    <FormField label="사용 변수">
+                      <input
+                        value={form.variables}
+                        onChange={(event) =>
+                          updateForm(
+                            "variables",
+                            event.target.value
+                          )
+                        }
+                        className="input-style"
+                        placeholder="customer_name, vehicle_model, delivery_date"
+                      />
+                    </FormField>
+
+                    <p className="text-xs leading-5 text-slate-500">
+                      변수는 쉼표로 구분합니다.
+                      메시지에서는
+                      {" {{customer_name}} "}
+                      처럼 작성합니다.
+                    </p>
+                  </div>
+                </section>
+
+                <section className="border-t border-slate-200 pt-7">
+                  <h3 className="font-bold">
+                    발송 조건
+                  </h3>
+
+                  <div className="mt-4 space-y-3">
+                    <CheckboxField
+                      checked={
+                        form.requiresMarketingConsent ||
+                        form.messageType ===
+                          "광고성"
                       }
-                      className="input-style"
-                      placeholder="생일 축하 메시지"
-                      autoFocus
+                      disabled={
+                        form.messageType ===
+                        "광고성"
+                      }
+                      title="마케팅 수신동의 필요"
+                      description="동의한 고객에게만 이 템플릿을 사용할 수 있습니다."
+                      onChange={(checked) => {
+                        updateForm(
+                          "requiresMarketingConsent",
+                          checked
+                        );
+
+                        if (!checked) {
+                          updateForm(
+                            "requiresNightConsent",
+                            false
+                          );
+                        }
+                      }}
                     />
-                  </FormField>
 
-                  <FormField label="템플릿 키 *">
-                    <input
-                      value={form.templateKey}
-                      onChange={(event) =>
-                        updateForm(
-                          "templateKey",
-                          event.target.value
-                            .toLowerCase()
-                            .replace(/[^a-z0-9_]/g, "")
-                        )
+                    <CheckboxField
+                      checked={
+                        form.requiresNightConsent
                       }
-                      className="input-style"
-                      placeholder="birthday_default"
-                    />
-                  </FormField>
-
-                  <FormField label="메시지 분류">
-                    <select
-                      value={form.category}
-                      onChange={(event) =>
+                      title="야간 광고 수신동의 필요"
+                      description="야간 발송에 대한 별도 동의가 있는 고객만 대상으로 합니다."
+                      onChange={(checked) => {
                         updateForm(
-                          "category",
-                          event.target.value
-                        )
-                      }
-                      className="input-style"
-                    >
-                      <option value="birthday">생일</option>
-                      <option value="delivery_anniversary">
-                        출고기념일
-                      </option>
-                      <option value="finance_maturity">
-                        금융 만기
-                      </option>
-                      <option value="vehicle_interest">
-                        관심 차종
-                      </option>
-                      <option value="follow_up">
-                        재연락
-                      </option>
-                      <option value="custom">
-                        사용자 정의
-                      </option>
-                    </select>
-                  </FormField>
+                          "requiresNightConsent",
+                          checked
+                        );
 
-                  <FormField label="메시지 유형">
-                    <select
-                      value={form.messageType}
-                      onChange={(event) => {
-                        const value = event.target.value;
-
-                        updateForm("messageType", value);
-
-                        if (value === "광고성") {
+                        if (checked) {
                           updateForm(
                             "requiresMarketingConsent",
                             true
                           );
                         }
                       }}
-                      className="input-style"
-                    >
-                      <option value="정보성">정보성</option>
-                      <option value="광고성">광고성</option>
-                    </select>
-                  </FormField>
-
-                  <FormField label="발송 채널">
-                    <select
-                      value={form.channel}
-                      onChange={(event) =>
-                        updateForm(
-                          "channel",
-                          event.target.value
-                        )
-                      }
-                      className="input-style"
-                    >
-                      <option value="문자">문자</option>
-                      <option value="카카오톡">
-                        카카오톡
-                      </option>
-                      <option value="텔레그램">
-                        텔레그램
-                      </option>
-                      <option value="이메일">이메일</option>
-                    </select>
-                  </FormField>
-
-                  <FormField label="활성 상태">
-                    <select
-                      value={form.isActive ? "active" : "inactive"}
-                      onChange={(event) =>
-                        updateForm(
-                          "isActive",
-                          event.target.value === "active"
-                        )
-                      }
-                      className="input-style"
-                    >
-                      <option value="active">활성</option>
-                      <option value="inactive">비활성</option>
-                    </select>
-                  </FormField>
-                </div>
-              </section>
-
-              <section className="border-t border-slate-200 pt-7">
-                <h3 className="font-bold">메시지 내용</h3>
-
-                <div className="mt-4 space-y-4">
-                  <FormField label="메시지 제목">
-                    <input
-                      value={form.subject}
-                      onChange={(event) =>
-                        updateForm(
-                          "subject",
-                          event.target.value
-                        )
-                      }
-                      className="input-style"
-                      placeholder="채널에서 제목을 지원할 때 사용합니다."
                     />
-                  </FormField>
+                  </div>
+                </section>
 
-                  <FormField label="메시지 내용 *">
-                    <textarea
-                      value={form.content}
-                      onChange={(event) =>
-                        updateForm(
-                          "content",
-                          event.target.value
-                        )
-                      }
-                      className="input-style min-h-48 resize-y"
-                      placeholder={`안녕하세요, {{customer_name}} 고객님.\nBMW 평택전시장입니다.`}
-                    />
-                  </FormField>
+                <div className="flex justify-end gap-3 border-t border-slate-200 pt-5">
+                  <button
+                    type="button"
+                    onClick={closeModal}
+                    disabled={isSaving}
+                    className="rounded-xl border border-slate-300 px-5 py-3 text-sm font-semibold hover:bg-slate-50 disabled:opacity-50"
+                  >
+                    취소
+                  </button>
 
-                  <FormField label="사용 변수">
-                    <input
-                      value={form.variables}
-                      onChange={(event) =>
-                        updateForm(
-                          "variables",
-                          event.target.value
-                        )
-                      }
-                      className="input-style"
-                      placeholder="customer_name, vehicle_model, delivery_date"
-                    />
-                  </FormField>
-
-                  <p className="text-xs leading-5 text-slate-500">
-                    변수는 쉼표로 구분합니다. 메시지에서는
-                    {" {{customer_name}} "}처럼 작성합니다.
-                  </p>
+                  <button
+                    type="submit"
+                    disabled={isSaving}
+                    className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
+                  >
+                    {isSaving
+                      ? "저장 중..."
+                      : editingTemplateId
+                        ? "수정 저장"
+                        : "템플릿 저장"}
+                  </button>
                 </div>
-              </section>
-
-              <section className="border-t border-slate-200 pt-7">
-                <h3 className="font-bold">발송 조건</h3>
-
-                <div className="mt-4 space-y-3">
-                  <CheckboxField
-                    checked={
-                      form.requiresMarketingConsent ||
-                      form.messageType === "광고성"
-                    }
-                    disabled={form.messageType === "광고성"}
-                    title="마케팅 수신동의 필요"
-                    description="동의한 고객에게만 이 템플릿을 사용할 수 있습니다."
-                    onChange={(checked) => {
-                      updateForm(
-                        "requiresMarketingConsent",
-                        checked
-                      );
-
-                      if (!checked) {
-                        updateForm(
-                          "requiresNightConsent",
-                          false
-                        );
-                      }
-                    }}
-                  />
-
-                  <CheckboxField
-                    checked={form.requiresNightConsent}
-                    title="야간 광고 수신동의 필요"
-                    description="야간 발송에 대한 별도 동의가 있는 고객만 대상으로 합니다."
-                    onChange={(checked) => {
-                      updateForm(
-                        "requiresNightConsent",
-                        checked
-                      );
-
-                      if (checked) {
-                        updateForm(
-                          "requiresMarketingConsent",
-                          true
-                        );
-                      }
-                    }}
-                  />
-                </div>
-              </section>
-
-              <div className="flex justify-end gap-3 border-t border-slate-200 pt-5">
-                <button
-                  type="button"
-                  onClick={closeModal}
-                  disabled={isSaving}
-                  className="rounded-xl border border-slate-300 px-5 py-3 text-sm font-semibold hover:bg-slate-50 disabled:opacity-50"
-                >
-                  취소
-                </button>
-
-                <button
-                  type="submit"
-                  disabled={isSaving}
-                  className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
-                >
-                  {isSaving
-                    ? "저장 중..."
-                    : editingTemplateId
-                      ? "수정 저장"
-                      : "템플릿 저장"}
-                </button>
-              </div>
-            </form>
+              </form>
+            </div>
           </div>
-        </div>
-      )}
+        )}
     </main>
   );
 }
@@ -933,8 +1066,13 @@ function SummaryCard({
 }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <p className="text-sm text-slate-500">{label}</p>
-      <p className="mt-2 text-3xl font-bold">{value}</p>
+      <p className="text-sm text-slate-500">
+        {label}
+      </p>
+
+      <p className="mt-2 text-3xl font-bold">
+        {value}
+      </p>
     </div>
   );
 }
@@ -982,7 +1120,9 @@ function CheckboxField({
         type="checkbox"
         checked={checked}
         disabled={disabled}
-        onChange={(event) => onChange(event.target.checked)}
+        onChange={(event) =>
+          onChange(event.target.checked)
+        }
         className="mt-1 h-4 w-4"
       />
 
@@ -999,7 +1139,11 @@ function CheckboxField({
   );
 }
 
-function CategoryBadge({ category }: { category: string }) {
+function CategoryBadge({
+  category,
+}: {
+  category: string;
+}) {
   const labels: Record<string, string> = {
     birthday: "생일",
     delivery_anniversary: "출고기념일",
@@ -1016,7 +1160,11 @@ function CategoryBadge({ category }: { category: string }) {
   );
 }
 
-function MessageTypeBadge({ type }: { type: string }) {
+function MessageTypeBadge({
+  type,
+}: {
+  type: string;
+}) {
   const className =
     type === "광고성"
       ? "bg-orange-100 text-orange-700"
@@ -1031,7 +1179,11 @@ function MessageTypeBadge({ type }: { type: string }) {
   );
 }
 
-function ActiveBadge({ active }: { active: boolean }) {
+function ActiveBadge({
+  active,
+}: {
+  active: boolean;
+}) {
   return (
     <span
       className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
@@ -1045,7 +1197,11 @@ function ActiveBadge({ active }: { active: boolean }) {
   );
 }
 
-function RequirementBadge({ text }: { text: string }) {
+function RequirementBadge({
+  text,
+}: {
+  text: string;
+}) {
   return (
     <span className="rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-600">
       {text}
@@ -1064,13 +1220,16 @@ function parseVariables(value: string) {
   );
 }
 
-function normalizeVariables(value: unknown): string[] {
+function normalizeVariables(
+  value: unknown
+): string[] {
   if (!Array.isArray(value)) {
     return [];
   }
 
   return value.filter(
-    (item): item is string => typeof item === "string"
+    (item): item is string =>
+      typeof item === "string"
   );
 }
 
