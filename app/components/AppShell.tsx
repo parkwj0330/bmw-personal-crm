@@ -300,10 +300,40 @@ function SidebarContent({
           </p>
 
           <div className="mt-3 space-y-2 px-3">
-            <ComingSoonItem
-              icon="💬"
-              title="메시지 센터"
-            />
+            <Link
+  href="/messages"
+  className={`group flex items-center gap-3 rounded-xl px-3 py-3 transition ${
+    isNavigationActive(pathname, "/messages")
+      ? "bg-blue-600 text-white shadow-sm"
+      : "text-slate-700 hover:bg-slate-100"
+  }`}
+>
+  <span
+    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
+      isNavigationActive(pathname, "/messages")
+        ? "bg-white/15"
+        : "bg-slate-100 group-hover:bg-white"
+    }`}
+  >
+    💬
+  </span>
+
+  <span className="min-w-0 flex-1">
+    <span className="block text-sm font-semibold">
+      메시지 센터
+    </span>
+
+    <span
+      className={`mt-0.5 block text-[10px] ${
+        isNavigationActive(pathname, "/messages")
+          ? "text-blue-100"
+          : "text-slate-400"
+      }`}
+    >
+      템플릿 및 발송 관리
+    </span>
+  </span>
+</Link>
 
             <ComingSoonItem
               icon="⚙️"
