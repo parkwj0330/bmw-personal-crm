@@ -335,10 +335,40 @@ function SidebarContent({
   </span>
 </Link>
 
-            <ComingSoonItem
-              icon="⚙️"
-              title="자동화 센터"
-            />
+            <Link
+  href="/automations"
+  className={`group flex items-center gap-3 rounded-xl px-3 py-3 transition ${
+    isNavigationActive(pathname, "/automations")
+      ? "bg-blue-600 text-white shadow-sm"
+      : "text-slate-700 hover:bg-slate-100"
+  }`}
+>
+  <span
+    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
+      isNavigationActive(pathname, "/automations")
+        ? "bg-white/15"
+        : "bg-slate-100 group-hover:bg-white"
+    }`}
+  >
+    ⚙️
+  </span>
+
+  <span className="min-w-0 flex-1">
+    <span className="block text-sm font-semibold">
+      자동화 센터
+    </span>
+
+    <span
+      className={`mt-0.5 block text-[10px] ${
+        isNavigationActive(pathname, "/automations")
+          ? "text-blue-100"
+          : "text-slate-400"
+      }`}
+    >
+      실행 규칙 및 예약 관리
+    </span>
+  </span>
+</Link>
 
             <ComingSoonItem
               icon="🤖"
